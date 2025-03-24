@@ -3,6 +3,9 @@ from pydantic import BaseModel
 from user_dao import UserDAO
 from history_dao import HistoryDAO
 from teach_dao import TeachDAO
+from student_homework_dao import StudentHomeworkDAO
+from homework_dao import HomeworkDAO
+from question_dao import QuestionDAO
 from bson import ObjectId
 from datetime import datetime,timezone
 
@@ -10,48 +13,87 @@ app = FastAPI(docs_url="/docs",
               redoc_url="/redoc",
               openapi_url="/openapi.json")
 
-class UserAdd(BaseModel):
-    account: str
-    name: str
-    type: int
-    password: str
+# 学生DAO操作
+# @app.get("/dao/student/getHomeworkList")
+# def get_homework_list(student_id: str):
+#     homeworks = StudentHomeworkDAO().find_by_student_id(ObjectId(student_id))
+#     if homeworks is not None:
+#         results = []
+#         for h in homeworks:
+#             dic = {'id':h['_id'], 'homeworkId': h['homework_id'], 'status': h['status'],'date':h['time']}
+#             results.append(dic)
+#     return {"code": 0, "message": "查询成功", "data": {'homeworkList': results}}
 
-class UserUpdate(BaseModel):
+@app.get("/dao/student/getHomework")
+def get_homework(homework_id: str):
+    pass
+
+class StudentHomeworkUpdate(BaseModel):
     id: str
-    name: str
-    type: int
-    password: str
+    status: int
+    scoreList: list
+    answerList: list
+    analysis: str
+    recommendationList: list
+
+@app.put("/dao/student/updateHomework")
+def update_homework(homework: StudentHomeworkUpdate):
+    id = homework.id
+    status = homework.status
+    scoreList = homework.scoreList
+    answerList = homework.answerList
+    analysis = homework.analysis
+    recommendationList = homework.recommendationList
+    count = StudentHomeworkDAO().update_student_homework(ObjectId(id), status, scoreList, recommendationList, analysis, answerList)
+    if count == 0:
+        return {"code": 1, "message": "更新失败，记录不存在"}
+    else:
+        return {"code": 0, "message": "更新成功"}
 
 class DialogAdd(BaseModel):
-    student_id: str
-    dialog: list
+    studentId: str
 
-# 学生DAO操作
 @app.post("/dao/student/addDialog")
 def add_dialog(history: DialogAdd):
-    student_id = history.student_id
-    dialog = history.dialog
+    student_id = history.studentId
     time = datetime.now(timezone.utc)
-    id = HistoryDAO().add_history(ObjectId(student_id), time, dialog)
+    id = HistoryDAO().add_history(ObjectId(student_id), time, [])
     return {"code": 0, "message": "添加成功，记录id为{}".format(id)}
 
+class DialogUpdate(BaseModel):
+    id: str
+    dialog: list
+
+@app.put("/dao/student/updateDialog")
+def update_dialog(history: DialogUpdate):
+    id = history.id
+    dialog = history.dialog
+    count = HistoryDAO().update_history(ObjectId(id), dialog)
+    if count == 0:
+        return {"code": 1, "message": "更新失败，记录不存在"}
+    else:
+        return {"code": 0, "message": "更新成功"}
+
 @app.get("/dao/student/getDialogList")
-def get_dialog_list(student_id: str):
-    dialogs = HistoryDAO().find_histories(ObjectId(student_id))
+def get_dialog_list(studentId: str):
+    dialogs = HistoryDAO().find_histories(ObjectId(studentId))
     if dialogs is not None:
-        dialogs = map(HistoryDAO.map, dialogs)
-    return {"code": 0, "message": "查询成功", "data": {'dialogList': dialogs}}
+        results = []
+        for d in dialogs:
+            dic = {'id': d['_id'], 'studentId': d['student_id'], 'time': d['time'], 'dialog': d['dialogs']}
+        results.append(dic)
+    return {"code": 0, "message": "查询成功", "data": {'dialogList': results}}
 
 @app.get("/dao/student/getDialog")
-def get_dialog(dialog_id: str):
-    dialog = HistoryDAO().find_by_id(ObjectId(dialog_id))
+def get_dialog(dialogId: str):
+    dialog = HistoryDAO().find_by_id(ObjectId(dialogId))
     if dialog is not None:
-        dialog = HistoryDAO.map(dialog)
-    return {"code": 0, "message": "查询成功", "data": dialog}
+        dic = {'id': dialog['_id'], 'studentId': dialog['student_id'], 'time': dialog['time'], 'dialog': dialog['dialogs']}
+    return {"code": 0, "message": "查询成功", "data": dic}
 
 @app.get("/dao/student/getTeacherList")
-def get_teacher_list(student_id: str):
-    teachers = TeachDAO().find_teacher_by_student_id(ObjectId(student_id))
+def get_teacher_list(studentId: str):
+    teachers = TeachDAO().find_teacher_by_student_id(ObjectId(studentId))
     if len(teachers) != 0:
         teachers = map(UserDAO.map, teachers)
     return {"code": 0, "message": "查询成功", "data": {'teacherList': teachers}}
@@ -61,6 +103,12 @@ def get_teacher_list(student_id: str):
 
 
 # 基础人员管理
+class UserAdd(BaseModel):
+    account: str
+    name: str
+    type: int
+    password: str
+
 @app.post("/dao/user")
 def add_user(user: UserAdd):
     account = user.account
@@ -80,6 +128,12 @@ def delete_user(id: str):
         return {"code": 1, "message": "删除失败，记录不存在"}
     else:
         return {"code": 0, "message": "删除成功"}
+    
+class UserUpdate(BaseModel):
+    id: str
+    name: str
+    type: int
+    password: str
 
 @app.put("/dao/user")
 def update_user(user: UserUpdate):

@@ -13,9 +13,14 @@ class HistoryDAO(BaseDAO):
     def find_by_id(self, id: ObjectId):
         return self.find_one({'_id': id})
     
-    def add_history(self, student_id: ObjectId, time: datetime, dialog: list):
+    def add_history(self, student_id: ObjectId, time: datetime, dialogs: list):
         return self.insert_one({
             'student_id': student_id,
             'time': time,
-            'dialog': dialog
+            'dialogs': dialogs
         })
+
+    def update_history(self, history_id: ObjectId, dialogs: list):
+        return self.update_one({'_id': history_id}, {'$set': {
+            'dialogs': dialogs
+        }})
