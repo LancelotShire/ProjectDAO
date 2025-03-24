@@ -9,3 +9,6 @@ class TeachDAO(BaseDAO):
     def add_teach(self,student_id:ObjectId,teacher_id:ObjectId):
         return self.insert_one({"student":student_id,"teacher":teacher_id})
     
+    def find_teacher_by_student_id(self,student_id:ObjectId):
+        return self.find_many({"student_id":student_id})
+    
